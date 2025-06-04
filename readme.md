@@ -9,16 +9,21 @@ and provides DB-accessing API and the simple management UI.
 
 If you use package.el with [Marmalade](http://marmalade-repo.org/) or [MELPA](http://melpa.milkbox.net/), you just select the package 'edbi' and install it.
 
-Next, you install the perl module `RPC::EPC::Service', DBI and Database drivers with CPAN. 
+Next, you install the core EDBI Perl modules:
 
-Example:
 ```
-$ cpan RPC::EPC::Service DBI DBD::SQLite DBD::Pg DBD::mysql
+$ cpan RPC::EPC::Service DBI
 ```
 
-Here, SQLite, Postgresql and MySQL drivers will be installed, in addition to the EPC module.
-Of course, you can choose the drivers for your environment.
+And, DBD drivers as needed for your database:
 
+```
+$ cpan DBD::SQLite      # for SQLite
+$ cpan DBD::Pg          # for PostgreSQL
+$ cpan DBD::mysql       # for MySQL/MariaDB
+$ cpan DBD::ODBC        # for SQL Server or other ODBC-based databases
+
+```
 ### Manual installation
 
 This program depends on following programs:

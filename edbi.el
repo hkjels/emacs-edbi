@@ -33,7 +33,7 @@
 ;;  - ctable.el   / https://github.com/kiwanami/emacs-ctable
 ;;  - Perl/CPAN
 ;;    - RPC::EPC::Service (and some dependent modules)
-;;    - DBI and drivers, DBD::Sqlite, DBD::Pg, DBD::mysql
+;;    - DBI and drivers, DBD::Sqlite, DBD::Pg, DBD::mysql, DBD::ODBC
 
 ;; Place this program (edbi.el and edbi-bridge.pl) in your load path
 ;; and add following code.
@@ -548,7 +548,8 @@ The programmer should be aware of the internal state so as not to break the stat
   (loop for i in (list edbi:dbd-default
                        (edbi:dbd-init-postgresql)
                        (edbi:dbd-init-mysql)
-                       (edbi:dbd-init-oracle))
+                       (edbi:dbd-init-oracle)
+                       (edbi:dbd-init-mssql))
         do
         (edbi:dbd-register i))
   ;; add word-collection hook here for completion-at-point-functions
@@ -712,11 +713,70 @@ The programmer should be aware of the internal state so as not to break the stat
           "WITH" "WRITE" "XOR"))))
 
 (defun edbi:dbd-init-mssql ()
-  "[internal] Initialize `edbi:dbd' object for MS SQLServer (Sybase DBD)."
-  ;; TODO
-  ;; define edbi:dbd and register
-  ;; also define?  ADO.NET, ODBC
-  )
+  "[internal] Initialize `edbi:dbd' object for Microsoft SQL Server."
+  (make-edbi:dbd
+   :name "dbi:ODBC"
+   :table-info-args
+   (lambda (conn) (list nil nil nil "TABLE"))
+   :table-info-filter
+   'edbi:dbd-default-table-info-filter
+   :column-info-args
+   (lambda (conn table) (list nil nil table nil))
+   :column-info-filter
+   'edbi:dbd-default-column-info-filter
+   :type-info-filter
+   'edbi:dbd-default-type-info-filter
+   :limit-format
+   "SELECT TOP %limit% * FROM %table%"
+   :keywords
+   'edbi:dbd-init-mssql-keywords))
+
+(defun edbi:dbd-init-mssql-keywords ()
+  "[internal] SQL Server keywords and functions."
+  (list
+   (cons "Function"
+         (list
+          "ABS" "ACOS" "ASIN" "ATAN" "ATN2" "AVG" "CEILING" "CHARINDEX"
+          "COALESCE" "CONVERT" "COS" "COUNT" "CURRENT_TIMESTAMP"
+          "DATEADD" "DATEDIFF" "DATENAME" "DATEPART" "DAY" "DEGREES"
+          "EXP" "FLOOR" "GETDATE" "ISNULL" "LEFT" "LEN" "LOG" "LOWER"
+          "LTRIM" "MAX" "MIN" "MONTH" "NULLIF" "PATINDEX" "PI" "POWER"
+          "RAND" "REPLACE" "REPLICATE" "REVERSE" "RIGHT" "ROUND"
+          "RTRIM" "SIGN" "SIN" "SPACE" "SQRT" "STR" "STUFF" "SUBSTRING"
+          "SUM" "TAN" "UPPER" "YEAR"))
+   (cons "Keyword"
+         (list
+          "ADD" "ALL" "ALTER" "AND" "ANY" "AS" "ASC" "AUTHORIZATION"
+          "BACKUP" "BEGIN" "BETWEEN" "BREAK" "BROWSE" "BULK" "BY"
+          "CASCADE" "CASE" "CHECK" "CHECKPOINT" "CLOSE" "CLUSTERED"
+          "COALESCE" "COLLATE" "COLUMN" "COMMIT" "COMPUTE" "CONSTRAINT"
+          "CONTAINS" "CONTAINSTABLE" "CONTINUE" "CONVERT" "CREATE"
+          "CROSS" "CURRENT" "CURRENT_DATE" "CURRENT_TIME"
+          "CURRENT_TIMESTAMP" "CURRENT_USER" "CURSOR" "DATABASE"
+          "DBCC" "DEALLOCATE" "DECLARE" "DEFAULT" "DELETE" "DENY"
+          "DESC" "DISK" "DISTINCT" "DISTRIBUTED" "DOUBLE" "DROP"
+          "DUMP" "ELSE" "END" "ERRLVL" "ESCAPE" "EXCEPT" "EXEC"
+          "EXECUTE" "EXISTS" "EXIT" "EXTERNAL" "FETCH" "FILE" "FILLFACTOR"
+          "FOR" "FOREIGN" "FREETEXT" "FREETEXTTABLE" "FROM" "FULL"
+          "FUNCTION" "GOTO" "GRANT" "GROUP" "HAVING" "HOLDLOCK" "IDENTITY"
+          "IDENTITY_INSERT" "IDENTITYCOL" "IF" "IN" "INDEX" "INNER"
+          "INSERT" "INTERSECT" "INTO" "IS" "JOIN" "KEY" "KILL" "LEFT"
+          "LIKE" "LINENO" "LOAD" "MERGE" "NATIONAL" "NOCHECK"
+          "NONCLUSTERED" "NOT" "NULL" "NULLIF" "OF" "OFF" "OFFSETS"
+          "ON" "OPEN" "OPENDATASOURCE" "OPENQUERY" "OPENROWSET"
+          "OPENXML" "OPTION" "OR" "ORDER" "OUTER" "OVER" "PERCENT"
+          "PIVOT" "PLAN" "PRECISION" "PRIMARY" "PRINT" "PROC"
+          "PROCEDURE" "PUBLIC" "RAISERROR" "READ" "READTEXT" "RECONFIGURE"
+          "REFERENCES" "REPLICATION" "RESTORE" "RESTRICT" "RETURN"
+          "REVERT" "REVOKE" "RIGHT" "ROLLBACK" "ROWCOUNT" "ROWGUIDCOL"
+          "RULE" "SAVE" "SCHEMA" "SECURITYAUDIT" "SELECT" "SEMANTICKEYPHRASETABLE"
+          "SEMANTICSIMILARITYDETAILSTABLE" "SEMANTICSIMILARITYTABLE"
+          "SESSION_USER" "SET" "SETUSER" "SHUTDOWN" "SOME" "STATISTICS"
+          "SYSTEM_USER" "TABLE" "TABLESAMPLE" "TEXTSIZE" "THEN"
+          "TO" "TOP" "TRAN" "TRANSACTION" "TRIGGER" "TRUNCATE"
+          "TRY_CONVERT" "TSEQUAL" "UNION" "UNIQUE" "UNPIVOT"
+          "UPDATE" "UPDATETEXT" "USE" "USER" "VALUES" "VARYING"
+          "VIEW" "WAITFOR" "WHEN" "WHERE" "WHILE" "WITH" "WRITETEXT"))))
 
 (defun edbi:dbd-init-oracle ()
   "[internal] Initialize `edbi:dbd' object for Oracle."
@@ -1911,7 +1971,7 @@ If the region is active in the query buffer, the selected string is executed."
 
 (defun edbi:setup-completion-auto-complete ()
   "Initialization for auto-complete."
-  (when (eq 'auto-complete edbi:completion-tool) 
+  (when (eq 'auto-complete edbi:completion-tool)
     (ac-define-source edbi:tables
       '((candidates . edbi:ac-editor-table-candidates)
         (candidate-face . edbi:face-ac-table-candidate-face)
@@ -1953,7 +2013,7 @@ If the region is active in the query buffer, the selected string is executed."
                                    (when (listp i) (setq i (car i)))
                                    i) ret))
                ret))))))
-    
+
 (defun edbi:ac-edbi:sql-mode-hook ()
   (make-local-variable 'ac-sources)
   (setq ac-sources '(ac-source-words-in-same-mode-buffers
